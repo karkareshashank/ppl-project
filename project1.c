@@ -138,7 +138,7 @@ void lexical_checking(void)
 		while((ch == ' ' || ch == '\n') &&  !feof(in_fp))
 			ch = read_char_from_file();
 
-		if(feof(in_fp) || ch == -1)
+		if(feof(in_fp))
 			break;
 		if((ch >= 65 && ch <= 90) || (ch >= 97 && ch <= 122))
 		{
@@ -349,7 +349,102 @@ void int_float_check(char ch)
 // 
 void special_char_check(char ch)
 {
+	int 	err_code = -1;
+	char	new_ch;
+	int 	alpha_type;
+	int 	brac_count = 0;
+	int 	float_chk = 0;
+	add_char_to_token(ch);
 
 
+	if(ch == '.')
+	{
+		while(ch != ' ' && ch != '\n')
+		{
+			new_ch = read_char_from_file();
+			if(new_ch == ' ' || new_ch == '\n')
+			{
+				if(err_code == -1)
+				{
+					if(float_chk = 1)
+						output_token(CODE3);
+					else
+						output_token(CODE4);
+				}
+				else
+				{	
+					if(err_code == 0)
+						output_token(ERRCODE0);
+					else
+						output_token(ERRCODE1);
+				}
+			}
+			else
+			{
+				alpha_type = character_check(new_ch);
+				switch(alpha_type)
+				{
+					case 1:			// For alphabet
+						add_char_to_token(new_ch);
+						if(err_code != 0)
+							err_code = 1;
+						break;
+					case 2:			// For number
+						add_char_to_token(new_ch);
+						float_chk = 1;
+						break;
+					case 3:			// For special character	
+						add_char_to_token(new_ch);
+						if(err_code != 0)
+							err_code = 1;
+						break;
+					case 4:			// Unknown character
+						add_char_to_token(new_ch);
+						err_code = 0;
+						break;
+				};
 
+
+			}
+			ch = new_ch;
+		}
+
+	}
+	else
+	{
+		while( ch != ' ' && ch != '\n')
+		{
+			new_ch = read_char_from_file();		
+			if(new_ch == ' ' || new_ch == '\n')
+			{
+				if(err_code == -1)
+				{
+				}
+			}
+			else
+			{
+				alpha_type = character_check(new_ch);
+				switch(alpha_type)
+				{
+					case 1:				// For alphabet
+					case 2:				// For number
+					case 3:				// For special Character
+						add_char_to_token(new_ch);
+						if(new_ch == '}' && ch == '{')
+							brac_count = 1;
+						else if(new_ch == ']' && ch == '[')
+							brac_count = 1;
+						else
+							if(err_code !=  0)
+								err_code = 1;
+						break;
+					case 4:				// For unknown character
+						add_char_to_token(new_ch);
+						err_code = 0;
+						break;
+				};
+			}
+			ch = new_ch;
+		}
+	}
 }
