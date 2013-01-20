@@ -44,6 +44,7 @@ void int_float_check(char);			// Checks if the token with the given char is a in
 void special_char_check(char);			// Checks for the special characters
 void add_char_to_token(char);			// Adds the new character to the token
 int  check_special_token();			// Checks for the token if first letter is special charcter 
+void invalid_char_token(char);			// Checks for if token starts with invalid token
 
 // Start of main function
 int main(int argc,char** argv)
@@ -136,7 +137,7 @@ void lexical_checking(void)
 	while(!feof(in_fp))
 	{
 		ch = read_char_from_file();
-		while((ch == ' ' || ch == '\n') &&  !feof(in_fp))
+		while((ch == ' ' || ch == '\n' || ch == '\t') &&  !feof(in_fp))
 			ch = read_char_from_file();
 
 		if(feof(in_fp) || ch == -1)
@@ -149,11 +150,12 @@ void lexical_checking(void)
 		{
 			int_float_check(ch);
 		}
-		else if( (ch >= 42 && ch <=47) || (ch >= 60 && ch <= 62) || (ch == 91 || ch == 93 || ch == 123 || ch == 125) )
+		else if( (ch >= 42 && ch <=47 && ch != 44) || (ch >= 60 && ch <= 62) || (ch == 91 || ch == 93 || ch == 123 || ch == 125) )
 		{
 			special_char_check(ch);
 		}
-
+		else
+			invalid_char_token(ch);
 	}
 
 }
@@ -230,11 +232,11 @@ void keyword_identifier_check(char ch)
 	int  alpha_type;
 	add_char_to_token(ch);
 
-	while( ch != ' ' && ch != '\n')
+	while( ch != ' ' && ch != '\n' && ch != '\t')
 	{
 		new_ch = read_char_from_file();
 
-		if(new_ch == ' ' || new_ch == '\n')
+		if(new_ch == ' ' || new_ch == '\n' || new_ch == '\t')
 		{
 			if(check_for_keyword() == 1)
 				output_token(CODE1);
@@ -289,10 +291,10 @@ void int_float_check(char ch)
 
 	add_char_to_token(ch);
 
-	while(ch != ' ' && ch != '\n')
+	while(ch != ' ' && ch != '\n' && ch != '\t')
 	{
 		new_ch = read_char_from_file();
-		if(new_ch == ' ' || new_ch == '\n')
+		if(new_ch == ' ' || new_ch == '\n' || new_ch == '\t')
 		{
 			if(err_code == -1)
 			{
@@ -320,15 +322,22 @@ void int_float_check(char ch)
                                         break;
                                 case 2:                                         // For number
                                         add_char_to_token(new_ch);
+					if(ch == '.' && dot_count == 1)
+					{
+						int_or_float = 0;
+						err_code = -1;
+					}
+					else if(dot_count > 1)
+						err_code = 1;
 					if(int_or_float != 0)
 						int_or_float = 1;
                                         break;
                                 case 3:                                         // For special Character
                                         add_char_to_token(new_ch);
-					if(new_ch == '.' && dot_count == 0)
+					if(new_ch == '.')
 					{
-						int_or_float = 0;
 						dot_count++;
+						err_code  = 1;
 					}
 					else
 	                                       if(err_code != 0)
@@ -391,14 +400,14 @@ void special_char_check(char ch)
 
 	if(ch == '.')
 	{
-		while(ch != ' ' && ch != '\n')
+		while(ch != ' ' && ch != '\n' && ch != '\t')
 		{
 			new_ch = read_char_from_file();
-			if(new_ch == ' ' || new_ch == '\n')
+			if(new_ch == ' ' || new_ch == '\n' || new_ch == '\t')
 			{
 				if(err_code == -1)
 				{
-					if(float_chk = 1)
+					if(float_chk == 1)
 						output_token(CODE3);
 					else
 						output_token(CODE4);
@@ -444,10 +453,10 @@ void special_char_check(char ch)
 	}
 	else
 	{
-		while( ch != ' ' && ch != '\n')
+		while( ch != ' ' && ch != '\n' && ch != '\t')
 		{
 			new_ch = read_char_from_file();		
-			if(new_ch == ' ' || new_ch == '\n')
+			if(new_ch == ' ' || new_ch == '\n' || new_ch == '\t')
 			{
 				if(err_code == -1)
 				{
@@ -455,7 +464,7 @@ void special_char_check(char ch)
 					switch(result)
 					{
 						case 0:
-							output_token(ERRCODE0);
+							output_token(ERRCODE1);
 							break;
 						case 4:
 							output_token(CODE4);
@@ -502,4 +511,29 @@ void special_char_check(char ch)
 			ch = new_ch;
 		}
 	}
+}
+
+
+
+
+// Defining function invalid_char_token()
+void invalid_char_token(char ch)
+{
+	char new_ch;
+	add_char_to_token(ch);
+	while(ch != ' ' && ch != '\t' && ch != '\n')
+	{
+		new_ch = read_char_from_file();
+		if( new_ch == ' ' || new_ch == '\n' || new_ch == '\t')
+		{
+			output_token(ERRCODE0);
+		}
+		else
+		{
+			add_char_to_token(new_ch);
+		}
+		ch = new_ch;
+	}
+
+
 }
