@@ -29,7 +29,7 @@
 FILE* 	in_fp;		// Input file pointer
 FILE* 	out_fp;		// Output file pointer
 char*	token ;		// Stores token
-const char spl_char[]   = {'.','+','-','*','/','=','>','<','{','}','[',']'};		// List of all special characters in the grammer
+const char* spl_char[]   = {".","+","-","*","/","=",">","<","{","}","[","]"};		// List of all special characters in the grammer
 const char* keywords[KEYWORDS_NUM] = {"begin","end","if","then","for","while","print","int","float"};	// List of all keywords 
 
 
@@ -43,6 +43,7 @@ void keyword_identifier_check(char);		// Checks if the token with the given char
 void int_float_check(char);			// Checks if the token with the given char is a integer or float
 void special_char_check(char);			// Checks for the special characters
 void add_char_to_token(char);			// Adds the new character to the token
+int  check_special_token();			// Checks for the token if first letter is special charcter 
 
 // Start of main function
 int main(int argc,char** argv)
@@ -138,7 +139,7 @@ void lexical_checking(void)
 		while((ch == ' ' || ch == '\n') &&  !feof(in_fp))
 			ch = read_char_from_file();
 
-		if(feof(in_fp))
+		if(feof(in_fp) || ch == -1)
 			break;
 		if((ch >= 65 && ch <= 90) || (ch >= 97 && ch <= 122))
 		{
@@ -148,7 +149,7 @@ void lexical_checking(void)
 		{
 			int_float_check(ch);
 		}
-		else
+		else if( (ch >= 42 && ch <=47) || (ch >= 60 && ch <= 62) || (ch == 91 || ch == 93 || ch == 123 || ch == 125) )
 		{
 			special_char_check(ch);
 		}
@@ -198,7 +199,7 @@ int character_check(char ch)
 	else 					// For special character
 	{
 		for(i = 0;i < SPL_CHAR_NUM;i++)
-			if(spl_char[i] == ch)
+			if(spl_char[i][0] == ch)
 				return 3;
 		return 4; 
 	}
@@ -346,13 +347,44 @@ void int_float_check(char ch)
 }
 
 
-// 
+// Defining the function check_special_token()
+int check_special_token()
+{
+	int i;
+	char* grouping_token[] = {"{}","[]"};
+	char* shift_token[]    = {"<<",">>"};
+
+	for(i = 0; i < SPL_CHAR_NUM;i++)
+	{
+		if(strcmp(token,spl_char[i]) == 0)
+		{
+			if( i >= 0 && i <= 5)
+				return 4;
+			else if(i ==6 || i == 7)
+				return 5;
+			else if(i >= 8 && i<= 11)
+				return 7;
+		}
+	}
+
+	if(strcmp(token,grouping_token[0]) == 0  || strcmp(token,grouping_token[1]) == 0)
+			return 7;
+	if(strcmp(token,shift_token[0]) == 0  || strcmp(token,shift_token[1]) == 0)
+			return 6;
+
+
+	return 0;
+}
+
+
+
+// Defining the function special_char_check 
 void special_char_check(char ch)
 {
 	int 	err_code = -1;
 	char	new_ch;
 	int 	alpha_type;
-	int 	brac_count = 0;
+	int 	result ;
 	int 	float_chk = 0;
 	add_char_to_token(ch);
 
@@ -419,6 +451,32 @@ void special_char_check(char ch)
 			{
 				if(err_code == -1)
 				{
+					result = check_special_token();
+					switch(result)
+					{
+						case 0:
+							output_token(ERRCODE0);
+							break;
+						case 4:
+							output_token(CODE4);
+							break;
+						case 5:
+							output_token(CODE5);
+							break;
+						case 6:
+							output_token(CODE6);
+							break;
+						case 7:
+							output_token(CODE7);
+							break;
+					};		
+				}
+				else
+				{
+					if(err_code == 0)
+						output_token(ERRCODE0);
+					else
+						output_token(ERRCODE1);
 				}
 			}
 			else
@@ -428,15 +486,12 @@ void special_char_check(char ch)
 				{
 					case 1:				// For alphabet
 					case 2:				// For number
+						add_char_to_token(new_ch);	
+						if(err_code != 0)
+							err_code = 1;
+						break;
 					case 3:				// For special Character
 						add_char_to_token(new_ch);
-						if(new_ch == '}' && ch == '{')
-							brac_count = 1;
-						else if(new_ch == ']' && ch == '[')
-							brac_count = 1;
-						else
-							if(err_code !=  0)
-								err_code = 1;
 						break;
 					case 4:				// For unknown character
 						add_char_to_token(new_ch);
