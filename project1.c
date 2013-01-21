@@ -112,12 +112,17 @@ void create_out_filename(char* in_filename,char* out_filename)
 {
 	// Declaring Variables
 	int i;
+	int len;
 	char* temp;
 	temp = (char*)malloc(sizeof(char*)* FILE_SIZE);
 
-	// Extracting just the first part of filename
-	for(i = 0; in_filename[i] != '.' && in_filename[i] != '\0';i++)
-		temp[i] = in_filename[i];
+	len = strlen(in_filename);
+	strcpy(temp,in_filename);
+
+	// Removing .in part of the filename
+	for(i = len-1; temp[i] != '.' ;i--)
+	strncpy(temp,temp,i-1);
+	temp[i] = '\0';
 
 	// Concatinating it with .out and storing the result in out_filename
 	strcat(temp,".out");
@@ -162,11 +167,11 @@ void lexical_checking(void)
 
 
 //Defining the function read_char_from_file
+// It reads single character from the input file and returns it
 char read_char_from_file(void)
 {
 	char buf;
 	buf = fgetc(in_fp);
-	printf("%c --  %d\n",buf,buf);
 	return buf;
 }
 
@@ -181,6 +186,7 @@ void output_token(char*  msg_code)
 
 
 // Defining the function add_char_to_token
+// It adds given character to the token string
 void add_char_to_token(char ch)
 {
 	int i;
@@ -191,14 +197,17 @@ void add_char_to_token(char ch)
 
 
 // Defining the function character_check
+// It checks for whether the given character is a number,
+// an alphabet , an special character or a character not defined 
+// in the alphabet of the language
 int character_check(char ch)
 {
 	int i;
-	if(( ch >= 48 && ch <= 57))		// If number
+	if(( ch >= 48 && ch <= 57))						// If number
 		return 2;
 	else if ((ch >= 65 && ch <= 90) || (ch >= 97  &&  ch <= 122  ))		// If alphabets
 		return 1;
-	else 					// For special character
+	else				 					// For special character
 	{
 		for(i = 0;i < SPL_CHAR_NUM;i++)
 			if(spl_char[i][0] == ch)
@@ -209,7 +218,9 @@ int character_check(char ch)
 
 }
 
-// Defining the function check_for_keyword 
+// Defining the function check_for_keyword
+// This function check whether the token is a match to all
+// given keywords of the language 
 int check_for_keyword()
 {
 	int i = 0;
@@ -225,6 +236,8 @@ int check_for_keyword()
 
 
 // Defining the function keyword_identifier_check
+// This function checks and builds a token if the first character of the 
+// token starts with an alphabet
 void keyword_identifier_check(char ch)
 {
 	int  err_code = -1;
@@ -281,6 +294,8 @@ void keyword_identifier_check(char ch)
 
 
 // Defining the function int_float_check
+// This function checks and build token if the first
+// character of the token is a number
 void int_float_check(char ch)
 {
 	int dot_count = 0;
@@ -357,6 +372,8 @@ void int_float_check(char ch)
 
 
 // Defining the function check_special_token()
+// This function classifies the given special character
+// into different kinds defined in the alphabets of langauge
 int check_special_token()
 {
 	int i;
@@ -388,6 +405,9 @@ int check_special_token()
 
 
 // Defining the function special_char_check 
+// This function checks and builds the token
+// if the first character of the token is a special character 
+// defined in the alphabet of the language
 void special_char_check(char ch)
 {
 	int 	err_code = -1;
@@ -517,6 +537,8 @@ void special_char_check(char ch)
 
 
 // Defining function invalid_char_token()
+// This function takes care if the first character of the 
+// token starts with invalid character .
 void invalid_char_token(char ch)
 {
 	char new_ch;
