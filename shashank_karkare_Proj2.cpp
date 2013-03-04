@@ -84,6 +84,8 @@ int check_alphabets(char);			// Checks if the given character is in the alphabet
 void find_first_and_follow_set(void);
 void find_first(struct node*);
 void remove_brac_from_token(char*);
+void find_follow(char*);
+void remove_redundancy(int);
 
 // Start of main function
 int main(int argc,char** argv)
@@ -136,13 +138,6 @@ int main(int argc,char** argv)
 
 	// Calling the lexics function to do the rest of the processing
 	grammar_input();
-
-	// Managing the grammar rules
-//	manage_grammar_rules();
-
-	//Finding the first set
-//	find_first_and_follow_set();
-
 
 	// Freeing allocated memory 
 	free(in_filename);
@@ -289,22 +284,6 @@ void grammar_input(void)
 		}
 	}	
 
-/*	// Printing the grammar rules
-        temp = NULL;
-        ptr_to_end = NULL;
-        for(i = rules.begin(); i != rules.end();i++)
-        {
-                temp = *i;
-                ptr_to_end = temp;
-                while(ptr_to_end != NULL)
-                {
-                        printf("%s%d%d \t",ptr_to_end->token,ptr_to_end->optional,ptr_to_end->zero_or_more);
-                        ptr_to_end = ptr_to_end->next;
-                }
-                printf("\n");
-        }
-	
-*/
 
 	find_first_and_follow_set();
 }
@@ -398,10 +377,16 @@ void grammar_check()
 	{
 		temp = *i;
 		temp = temp->next;
+		if(temp == NULL)
+			print_error(ERRCODE0);
 		if(strcmp(temp->token,"-") != 0)
 			print_error(ERRCODE0);
+		else
+		{
+			if(temp->next == NULL)
+				print_error(ERRCODE0);
+		}
 	}
-
 
 	// Check if the left hand side is a valid non-terminal
 	for(i = rules.begin(); i != rules.end();i++)
@@ -430,12 +415,10 @@ void grammar_check()
 				if(temp->token[k] == '{' || temp->token[k] == '[')
 				{
 					s.push(temp->token[k]);
-//					printf("%c -- ",temp->token[k]);
 				}
 				if(temp->token[k] == '}' || temp->token[k] == ']')
 				{
 					t1 = s.pop();					
-//					printf("%c ++ ",t1);
 					if(t1 == '*')
 						print_error(ERRCODE0);
 					if(temp->token[k] == '}')
@@ -556,8 +539,12 @@ void find_first_and_follow_set()
 	struct node*  temp;
 	struct first* temp1;
 	struct first* end_ptr;
+	struct follow* temp2;
+	struct follow* end_ptr2;
 	vector<struct node*>::iterator i;
 	vector<struct first*>::iterator c;	
+	vector<struct follow*>::iterator z;
+
 
 	for(j =0 ; j < 100 ;j++)
 		set[j] = NULL;
@@ -585,9 +572,19 @@ void find_first_and_follow_set()
 		}
 
 		for(j=0;j < 100 ;j++)
+		{
+			free(set[j]);
 			set[j] = NULL;
+		}
 	}	
 	
+
+
+	// Remove redundancies in the first set
+	remove_redundancy(1);
+
+
+
 	// Printing the value of first set in file
 	int count = 0;
         for(c = nt_first.begin();c != nt_first.end();c++)
@@ -610,17 +607,76 @@ void find_first_and_follow_set()
 	}
 
 
-//	find_follow();
+//	finding follow set
 	for(j=0;j < 100 ;j++)
-                        set[j] = NULL;
-
-	for(i = rules.begin();i != rules.end();i++)
 	{
-		temp = *i;
-		find_follow(temp);
+		free(set[j]);
+                set[j] = NULL;
+	}
+	count = 0;
+	for(c = nt_first.begin();c != nt_first.end();c++)
+	{
+		k = 0;
+		temp1 = *c;
+		find_follow(temp1->token);
 
+		// store first set in vector
+                temp2 = (struct follow*)malloc(sizeof(struct follow));
+                strcpy(temp2->token,temp1->token);
+                temp2->next = NULL;
+                nt_follow.push_back(temp2);
+                end_ptr2 = temp2;
+
+                for(j=0; set[j] != NULL;j++)
+                {
+                        temp2 = (struct follow*)malloc(sizeof(struct follow));
+                        strcpy(temp2->token,set[j]);
+                        temp2->next = NULL;
+                        end_ptr2->next = temp2;
+                        end_ptr2  = temp2;
+                }
+		if(count == 0)
+		{
+			temp2 = (struct follow*)malloc(sizeof(struct follow));
+			strcpy(temp2->token,"$");
+			temp2->next = NULL;
+			end_ptr2->next = temp2;
+			end_ptr2 = temp2;
+		}
+	
+                for(j=0;j < 100 ;j++)
+                {
+                        free(set[j]);
+                        set[j] = NULL;
+                }
+		count++;
 	}
 
+
+	// Remove redundancies in the follow set
+	remove_redundancy(2);
+	
+	for(z = nt_follow.begin();z != nt_follow.end();z++)
+	{
+		temp2 = *z;
+		fprintf(out_fp,"FOLLOW(%s) = {",temp2->token);
+		temp2 = temp2->next;
+		while(temp2 != NULL)
+		{
+			fprintf(out_fp,"%s",temp2->token);
+                        if(temp2->next == NULL)
+                                fprintf(out_fp,"",temp2->token);
+                        else
+                                fprintf(out_fp,", ",temp2->token);
+                        temp2 = temp2->next;
+                        count++;
+
+		}
+		fprintf(out_fp,"}\n");
+                count = 0;
+
+
+	}
 }
 
 
@@ -641,7 +697,6 @@ void find_first(struct node* ptr)
 
 	while (temp != NULL)
 	{
-//		printf("1. %s \n",temp->token);
 		while( temp != NULL && (!(strcmp(temp->token,"|") == 0 && temp->optional == 0)))
 		{
 			
@@ -649,13 +704,9 @@ void find_first(struct node* ptr)
 			{
 				if(check_for_terminals(temp->token) == 1 )	
 				{
-//					printf("ptr 2\n");
 					for(i = 0; set[i] != NULL;i++);
-//					printf("ptr 3\n");
 					set[i] = (char*)malloc(sizeof(char)*100);
-//					printf("ptr 4\n");
 					strcpy(set[i],temp->token);
-//					printf("here !!");
 
 				}				
 				else
@@ -669,7 +720,6 @@ void find_first(struct node* ptr)
 					if(nxt_nt == NULL)
 						print_error(ERRCODE1);	
 					find_first(nxt_nt);
-//					printf("%s \n",temp->token);
 				}
 				while( temp != NULL && (!(strcmp(temp->token,"|") == 0 && temp->optional == 0)))
 					temp = temp->next;
@@ -785,10 +835,295 @@ void remove_brac_from_token(char* token)
 
 
 // Defining the function find_follow()
-void find_follow(struct node* ptr)
+void find_follow(char* non_terminal)
 {
+	vector<struct node*>::iterator i;
+	vector<struct first*>::iterator z;
+	struct node* temp;
+	struct node* ptr[20];
+	struct first* temp1;
+	int j,k,n=0,count;
+	int curr_opt,tmp_opt;
+
+	
+	for(i = rules.begin();i != rules.end();i++)
+	{
+		n = 0;
+		temp = *i;
+		temp = temp->next->next;
+		while(temp != NULL)
+		{
+			if(strcmp(temp->token,non_terminal) == 0)
+			{
+				ptr[n] = temp;
+				n++;
+			}
+			temp = temp->next;
+		}
+		if(n == 0)
+			continue;
+
+		for(count = 0; count < n;count++)
+		{
+			temp = ptr[count];
+			curr_opt = temp->optional;
+			temp = temp->next;
+			
+			if(strcmp(temp->token,"|") == 0)
+			{
+				temp = temp->next;
+				while(temp != NULL)
+				{
+					if(temp->optional < curr_opt)
+					{
+						if(check_for_terminals(temp->token) == 1)
+						{
+							for(j=0;set[j] != NULL;j++);				
+							set[j] = (char*)malloc(sizeof(char)*100);
+							strcpy(set[j],temp->token);
+						}
+						else
+						{
+							for(z = nt_first.begin(); z != nt_first.end();z++)
+							{
+								temp1 = *z;
+								if(strcmp(temp1->token,temp->token) == 0)
+								{
+									temp1 = temp1->next;
+									for(j=0;set[j] != NULL;j++);
+									while( temp1 != NULL)
+									{
+										set[j] = (char*)malloc(sizeof(char)*100);
+										strcpy(set[j],temp1->token);
+										j++;
+										temp1 = temp1->next;
+									}
+								}
+							}
+
+						}
+						break;
+					}
+					temp = temp->next;
+				}
+			}
+			else if(strcmp(temp->token,"|") != 0)
+			{
+				if(temp->optional <= curr_opt)
+				{
+					if(check_for_terminals(temp->token) == 1)
+                                        {      
+	                                        for(j=0;set[j] != NULL;j++);
+                                                set[j] = (char*)malloc(sizeof(char)*100);
+                                                strcpy(set[j],temp->token);
+                                        }
+                                        else
+                                        {
+                                                for(z = nt_first.begin(); z != nt_first.end();z++)
+                                                {
+        	                                        temp1 = *z;
+                                                        if(strcmp(temp1->token,temp->token) == 0)
+                                                        {
+                	                                        temp1 = temp1->next;
+                        	                                for(j=0;set[j] != NULL;j++);
+                                                                while( temp1 != NULL)
+                                                                {
+                                	                                set[j] = (char*)malloc(sizeof(char)*100);
+                                                                        strcpy(set[j],temp1->token);
+                                                                        j++;
+                                                                        temp1 = temp1->next;
+                                                                }
+                                                        }
+                                                 }
+
+					}
+					continue;
+				}
+				else if(temp->optional > curr_opt)
+				{		
+					tmp_opt = temp->optional;
+					if(check_for_terminals(temp->token) == 1)
+                                        {       
+                                                for(j=0;set[j] != NULL;j++);
+                                                set[j] = (char*)malloc(sizeof(char)*100);
+                                                strcpy(set[j],temp->token);
+                                        }
+                                        else
+                                        {
+                                                for(z = nt_first.begin(); z != nt_first.end();z++)
+                                                {
+                                                        temp1 = *z;
+                                                        if(strcmp(temp1->token,temp->token) == 0)
+                                                        {
+                                                                temp1 = temp1->next;
+                                                                for(j=0;set[j] != NULL;j++);
+                                                                while( temp1 != NULL)
+                                                                {
+                                                                        set[j] = (char*)malloc(sizeof(char)*100);
+                                                                        strcpy(set[j],temp1->token);
+                                                                        j++;
+                                                                        temp1 = temp1->next;
+                                                                }
+                                                        }
+                                                 }
+
+                                        }	
+					temp = temp->next;
+					while((strcmp(temp->token,"|") != 0 && temp->optional != curr_opt) || temp != NULL)
+					{
+						if(strcmp(temp->token,"|") == 0 && temp->optional <= tmp_opt)
+						{
+							temp = temp->next;
+							if(check_for_terminals(temp->token) == 1)
+                                        		{        
+	                	                                for(j=0;set[j] != NULL;j++);
+        	                	                        set[j] = (char*)malloc(sizeof(char)*100);
+                	                	                strcpy(set[j],temp->token);
+		                                        }
+                		                        else
+                                		        {
+		                                                for(z = nt_first.begin(); z != nt_first.end();z++)
+                		                                {
+                                		                        temp1 = *z;
+		                                                        if(strcmp(temp1->token,temp->token) == 0)
+                		                                        {
+                                		                                temp1 = temp1->next;
+                                                		                for(j=0;set[j] != NULL;j++);
+                                                                		while( temp1 != NULL)
+		                                                                {
+                		                                                        set[j] = (char*)malloc(sizeof(char)*100);
+                                		                                        strcpy(set[j],temp1->token);
+                                                		                        j++;
+                                                                		        temp1 = temp1->next;
+		                                                                }
+                		                                        }
+                                		                 }
+
+		                                        }
+							tmp_opt = temp->optional;
+						}
+						else if(strcmp(temp->token,"|") != 0 && temp->optional < tmp_opt)
+						{
+							if(check_for_terminals(temp->token) == 1)
+		                                        {        
+                		                                for(j=0;set[j] != NULL;j++);
+                                		                set[j] = (char*)malloc(sizeof(char)*100);
+                                                		strcpy(set[j],temp->token);
+		                                        }
+                		                        else
+                                		        {
+                                                		for(z = nt_first.begin(); z != nt_first.end();z++)
+		                                                {
+                		                                        temp1 = *z;
+                                		                        if(strcmp(temp1->token,temp->token) == 0)
+                                                		        {
+                                                                		temp1 = temp1->next;
+		                                                                for(j=0;set[j] != NULL;j++);
+                		                                                while( temp1 != NULL)
+                                		                                {
+                                                		                        set[j] = (char*)malloc(sizeof(char)*100);
+                                                                		        strcpy(set[j],temp1->token);
+		                                                                        j++;
+                		                                                        temp1 = temp1->next;
+                                		                                }
+                                                		        }
+		                                                 }
+			                                }
+							tmp_opt = temp->optional;
+						}
+						if(temp != NULL)
+							temp = temp->next;
+					}
+				}	
+			}
+
+		}// End of for loop of no of times an token appear in the rules
+
+	}// End of loop for every rule	
+}
 
 
 
+
+
+// Defining the function remove_redundancy()
+void remove_redundancy(int choice)
+{
+	if(choice == 1)
+	{
+		vector<struct first*>::iterator i;		
+		struct first* temp1;
+		struct first* temp2;
+		struct first* prev_temp1;
+		struct first* prev_temp2;
+		
+		for(i = nt_first.begin(); i != nt_first.end();i++)
+		{
+			temp1 = *i;
+			temp1 = temp1->next;
+			while(temp1 != NULL && temp1->next != NULL )
+			{
+				temp2 = temp1->next;
+				prev_temp2 = temp1;
+				while(temp2 != NULL)
+				{
+					if(strcmp(temp2->token,prev_temp2->token) == 0)
+					{
+						prev_temp2->next = temp2->next;
+						temp2 = temp2->next;
+					}
+					else
+					{
+						temp2 = temp2->next;
+						prev_temp2 = prev_temp2->next;
+					}
+				
+				}
+				temp1 = temp1->next;
+			}
+
+
+		}
+
+	}
+	else if(choice == 2)
+	{
+		vector<struct follow*>::iterator i;
+                struct follow* temp1;
+                struct follow* temp2;
+                struct follow* prev_temp1;
+                struct follow* prev_temp2;
+                
+                for(i = nt_follow.begin(); i != nt_follow.end();i++)
+                {
+                        temp1 = *i;
+                        temp1 = temp1->next;
+                        while(temp1->next != NULL)
+                        {
+                                temp2 = temp1->next;
+                                prev_temp2 = temp1;
+                                while(temp2 != NULL)
+                                {
+                                        if(strcmp(temp2->token,prev_temp2->token) == 0)
+                                        {       
+                                                prev_temp2->next = temp2->next;
+                                                temp2 = temp2->next;
+                                        }
+                                        else
+                                        {
+                                                temp2 = temp2->next;
+                                                prev_temp2 = prev_temp2->next;
+                                        }
+
+                                }
+                                temp1 = temp1->next;
+                        }
+
+
+                }
+		
+
+
+	}
 
 }
