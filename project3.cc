@@ -20,6 +20,8 @@ using namespace std;
 #define ERRCODE2    "ERROR 2: Type mismatch in expression"
 #define ERRCODE3    "ERROR 3: Type mismatch in assignment"
 
+
+// Defining the structures
 struct node{
 		char name[75];			// Stores variable name
 		char type[10];			// Stores the type of name
@@ -32,32 +34,25 @@ struct assign{
 		struct assign* next;
 	     };
 
-FILE* in_fp;
-vector<struct node*>declarations;
-struct node* ptr;
-char*  types[] = {"bool","int","double","string"};
 
 
-/*class stack{
-	private:
-		char*  array[100];
-		int top = -1;
-	public:
-		void  push(char*);
-		void  pop(char*);
-		      stack();
-	   }; 
-
-*/
+FILE* in_fp;					// Input File pointer
+vector<struct node*>declarations;		// Stores the declarations 
+struct node* ptr;				
+struct assign* head;
+const char*  types[] = {"bool","int","double","string"};	// Stores all the types used
 
 
 // Declaring the functions
-void store_declarations(void);
-void manage_array_variable(void);
-int  check_type(struct node*);
-void type_checking(void);
-//void print_error(char*);
-int operator_priority(char*);
+void store_declarations(void);		// Stores the declaration in teh vector for future use
+void manage_array_variable(void);	// If the declarations has array then properly add the size in the vector
+int  check_type(struct node*);		// removes the [] from the array declarations and add the flag in the vector
+void type_checking(void);		// Calls type_check_assignment() function on each assignment given 
+int type_check_assignment(struct assign*,struct assign*);	// Recursively calculate the return type of the assignment
+int operator_priority(char*);					// Return the priority of a particular operator
+int type_number(char*);						// Return the number assigned to the type 
+int compare_operators(char*);					// Return 1 if the given token is compare operator or not
+int math_operators(char*);					// Return 1 if the given token is math operator or not
 
 
 // Start of main function
@@ -75,7 +70,7 @@ int main(int argc,char** argv)
 	// Declaring all the variables
 	char* 	in_filename  = NULL;		// To store input filename
 	vector<struct node*>::iterator i;
-	struct node* temp;
+	
 
 	
 	// Allocating memory to all pointer variables
@@ -103,15 +98,6 @@ int main(int argc,char** argv)
 
 	// type_checking
 	type_checking();
-
-	// Printing the declarations
-	for(i = declarations.begin(); i != declarations.end();i++)
-	{
-		temp = *i;
-		printf("%s -- %s -- %d -- %d \n",temp->name,temp->type,temp->array,temp->array_size);
-
-	}
-
 
 	// Freeing allocated memory 
 	free(in_filename);
@@ -219,9 +205,10 @@ int check_type(struct node* token)
 // Defining the function manage_array_variable
 void manage_array_variable()
 {
+	int j;
 	vector<struct node*>::iterator i;
 	struct node* temp;
-	int j;
+	
 
 
 	for(i = declarations.begin(); i != declarations.end();i++)
@@ -252,14 +239,13 @@ int operator_priority(char* token)
 //Defining the function type_checking()
 void type_checking()
 {
-	printf("Entering type_checking function! \n");
-	char ch;
 	size_t n,t;
 	int  pos = 0;
 	int  temp_pos = 0;
 	int  temp_pos2 = 0;
         int  token_end = 0;
         int  token_num = 0;
+	int type = 0;
 	int  flag = 0;
 	int  j = 0;
 	char index[20];
@@ -267,10 +253,7 @@ void type_checking()
         char temp_token[TOKEN_SIZE];
 	vector<struct node*>::iterator i;
 	struct assign* temp;
-	struct assign* head;
 	struct assign* prev_ptr;
-//	stack operators;
-//	stack variables;
 
 	temp_line = (char*)malloc(sizeof(char)*100);
 
@@ -279,7 +262,8 @@ void type_checking()
 	{
 		temp = head = prev_ptr = NULL;
 		t = getline(&temp_line,&n,in_fp);
-	//	printf("%s",temp_line);
+		if(feof(in_fp))
+			break;
 		pos = 0;
 		token_num = 0;
 		while(temp_line[pos] != '\n')
@@ -295,7 +279,7 @@ void type_checking()
 			}
 			temp_token[token_end] = '\0';
 		
-			temp = (struct assign*)malloc(sizeof(struct assign*));
+			temp = (struct assign*)malloc(sizeof(struct assign));
 			temp->next = NULL;
 			strcpy(temp->token,temp_token);
 		
@@ -321,7 +305,6 @@ void type_checking()
 		while(temp != NULL)
 		{
 			flag = 0;
-	//		printf("%s\n",temp->token);
 			pos = 0;
 			temp_pos = 0;
 			while(temp->token[pos] != '\0' && temp->token[pos] != '[')
@@ -340,7 +323,6 @@ void type_checking()
 				for(j = pos+1; temp->token[j] != ']';j++)
 					index[temp_pos++] = temp->token[j];
 				index[temp_pos] = '\0';
-	//			printf("index = %s\n",index);
 				strcpy(prev_ptr->token,index);
 				prev_ptr->next = temp->next->next;
 				temp->next->next = prev_ptr;
@@ -359,16 +341,30 @@ void type_checking()
 		}
 
 
-		// Printing the assignment
 		temp = head;
-		while(temp != NULL)
-		{
-			printf("%s ",temp->token);
-			temp= temp->next;
-		}
-		printf("\n");
+		while(temp->next != NULL)
+			temp = temp->next;
 
+		// Calculating the return type of the assignment statement
+		type = type_check_assignment(head,temp);
 
+		switch(type){
+
+				case 4:
+					printf("string\n");break;
+				case 3:
+					printf("double\n");break;
+				case 2:
+					printf("int\n");break;
+				case 1:
+					printf("bool\n");break;
+				case 0:
+					printf("%s\n",ERRCODE1);break;
+				case -1:
+					printf("%s\n",ERRCODE2);break;
+				case -2:
+					printf("%s\n",ERRCODE3);break;
+				}
 		// freeing the memory linklist
 		temp = head;
 		while(temp != NULL)
@@ -380,4 +376,177 @@ void type_checking()
 		head = NULL;
 	}
 
+}
+
+
+
+// Defining the function isOperator()
+int isOperator(char* token)
+{
+	const char* ops[11] = {"=","+","-","*","/","<",">","<=",">=","==","[]"};
+	int i;
+
+	for(i = 0; i < 11;i++)
+		if(strcmp(token,ops[i]) == 0)
+			return 1;
+	return 0;
+
+}
+
+
+// Defining the function type_number
+int type_number(char* type)
+{
+	if(strcmp(type,"bool") == 0)
+		return 1;
+	else if(strcmp(type,"int") == 0)
+		return 2;
+	else if(strcmp(type,"double") == 0)
+		return 3;
+	else if(strcmp(type,"string") == 0)
+		return 4;
+
+}
+
+
+// Defining the function compare_operators()
+int compare_operators(char* token)
+{
+	if(strcmp(token,">") == 0 || strcmp(token,"<") == 0 ||strcmp(token,">=") == 0 ||strcmp(token,"<=") == 0 ||strcmp(token,"==") == 0 )
+		return 1;
+	return 0;
+}
+
+
+// Defining the function math_operators()
+int math_operators(char* token)
+{
+	if(strcmp(token,"+") == 0 ||strcmp(token,"-") == 0 ||strcmp(token,"*") == 0 ||strcmp(token,"/") == 0  )
+		return 1;
+	return 0;
+
+}
+
+
+
+// Defining the function type_check_assignment()
+int type_check_assignment(struct assign* start,struct assign* end)
+{
+	struct assign* temp = NULL;
+	struct assign* prev_temp = NULL;
+	struct assign* split = NULL;
+	struct assign* start1 = NULL;
+	struct assign* start2 = NULL;
+	struct assign* end1 = NULL;
+	struct assign* end2 = NULL;
+	struct assign* ops = NULL;
+	vector<struct node*>::iterator i;
+	struct node* node_temp;
+	int    max = 0;
+	int count = 0;
+	int    type_left = 0;
+	int    type_right = 0;
+	temp = start->next;
+	start1 = start;
+	end2 = end;
+	prev_temp = start;
+
+
+	// Base Case
+	if(start == end)
+	{
+		for(i = declarations.begin(); i !=  declarations.end();i++)
+		{
+			node_temp = *i;
+			if(strcmp(start->token,node_temp->name) == 0)
+				return type_number(node_temp->type);			// return proper identifier type
+
+		}
+		for(count = 0 ; count < strlen(start->token);count++)
+		{
+			if(start->token[count]  >= '0' && start->token[count] <= '9')
+				continue;
+			else
+				return 0;
+		}
+		return 2;
+	}
+
+
+	while(temp != end)
+	{
+		if(isOperator(temp->token) == 1)
+		{
+			if( operator_priority(temp->token) > max)
+			{
+				max = operator_priority(temp->token);
+				split  = prev_temp;
+			}
+		}
+
+		temp = temp->next;
+		prev_temp= prev_temp->next;
+	}
+	end1 = split;
+	ops  = split->next;
+	start2 = split->next->next;
+
+
+
+	// Divide	
+	type_left  = type_check_assignment(start1,end1);
+	type_right = type_check_assignment(start2,end2);
+	
+
+	
+	// Conquer
+	if(type_left == 0 || type_right == 0)
+		return 0;
+	if(type_left == -1 || type_right == -1)
+		return -1;
+	if(type_left == -2 || type_right == -2)
+		return -2;
+	
+	if(strcmp(ops->token,"=") == 0)
+	{
+		if(type_left == type_right)
+			return type_left;
+		else if(type_left == 3 && type_right == 2)
+			return type_left;
+		else
+			return -2;
+	}
+	else if(strcmp(ops->token,"[]") == 0)
+	{
+		for(i = declarations.begin(); i != declarations.end(); i++)
+		{
+			node_temp = *i;
+			if(strcmp(end1->token,node_temp->name) == 0)	
+				if(node_temp->array == 0)
+					return 0;
+
+		}	
+		if(type_right != 2)
+			return -1;
+		else
+			return type_left;
+	}
+	else if(compare_operators(ops->token) == 1)
+	{
+		if(type_right == type_left)
+			return 1;
+		else if((type_right == 2 && type_left == 3) || (type_right == 3 && type_left == 2))
+			return 1;
+		else
+			return -1;
+	}
+	else if(math_operators(ops->token) == 1)
+	{
+		if(type_right == type_left)
+			return type_right;
+		else if((type_right == 2 && type_left == 3) || (type_right == 3 && type_left == 2))
+			return 3;
+		else
+			return -1;
+	}
 }
