@@ -23,10 +23,10 @@ using namespace std;
 
 // Defining the structures
 struct node{
-		char name[75];			// Stores variable name
-		char type[10];			// Stores the type of name
-		int  array;			// 1 - if array else 0
-		int  array_size;		// Stores size of array else -1
+		char name[75];					// Stores variable name
+		char type[10];					// Stores the type of name
+		int  array;					// 1 - if array else 0
+		int  array_size;				// Stores size of array else -1
 	   };
 	
 struct assign{
@@ -36,18 +36,18 @@ struct assign{
 
 
 
-FILE* in_fp;					// Input File pointer
-vector<struct node*>declarations;		// Stores the declarations 
+FILE* in_fp;							// Input File pointer
+vector<struct node*>declarations;				// Stores the declarations 
 struct node* ptr;				
 struct assign* head;
 const char*  types[] = {"bool","int","double","string"};	// Stores all the types used
 
 
 // Declaring the functions
-void store_declarations(void);		// Stores the declaration in teh vector for future use
-void manage_array_variable(void);	// If the declarations has array then properly add the size in the vector
-int  check_type(struct node*);		// removes the [] from the array declarations and add the flag in the vector
-void type_checking(void);		// Calls type_check_assignment() function on each assignment given 
+void store_declarations(void);					// Stores the declaration in teh vector for future use
+void manage_array_variable(void);				// If the declarations has array then properly add the size in the vector
+int  check_type(struct node*);					// removes the [] from the array declarations and add the flag in the vector
+void type_checking(void);					// Calls type_check_assignment() function on each assignment given 
 int type_check_assignment(struct assign*,struct assign*);	// Recursively calculate the return type of the assignment
 int operator_priority(char*);					// Return the priority of a particular operator
 int type_number(char*);						// Return the number assigned to the type 
@@ -68,8 +68,8 @@ int main(int argc,char** argv)
 	}
 
 	// Declaring all the variables
-	char* 	in_filename  = NULL;		// To store input filename
-	vector<struct node*>::iterator i;
+	char* 	in_filename  = NULL;				// To store input filename
+	vector<struct node*>::iterator i;			// iterator to travese each value stored in vector
 	
 
 	
@@ -220,6 +220,7 @@ void manage_array_variable()
 
 
 
+// This function return the priority of the operator so that the split for the recurrance can be done accordingly
 int operator_priority(char* token)
 {
 	if(strcmp(token,"[]") == 0)
@@ -349,7 +350,14 @@ void type_checking()
 		type = type_check_assignment(head,temp);
 
 		switch(type){
-
+				case 14:
+					printf("Array of string\n");break;
+				case 13:
+					printf("Array of double\n");break;
+				case 12:
+					printf("Array of int\n");break;
+				case 11:
+					printf("Array of bool\n");break;
 				case 4:
 					printf("string\n");break;
 				case 3:
@@ -443,9 +451,11 @@ int type_check_assignment(struct assign* start,struct assign* end)
 	vector<struct node*>::iterator i;
 	struct node* node_temp;
 	int    max = 0;
-	int count = 0;
+	int    count = 0;
 	int    type_left = 0;
 	int    type_right = 0;
+	int    type_num = 0;
+	int    temp_num = 0;
 	temp = start->next;
 	start1 = start;
 	end2 = end;
@@ -459,7 +469,26 @@ int type_check_assignment(struct assign* start,struct assign* end)
 		{
 			node_temp = *i;
 			if(strcmp(start->token,node_temp->name) == 0)
-				return type_number(node_temp->type);			// return proper identifier type
+			{
+				type_num = type_number(node_temp->type);	
+				temp_num = type_num;
+				if(node_temp->array == 1)
+				{
+					switch (type_num){
+								case 1:
+									temp_num = 11;break;
+								case 2:
+									temp_num = 12;break;
+								case 3:
+									temp_num = 13;break;
+								case 4:
+									temp_num = 14;break;
+							}
+
+				}
+				type_num = temp_num;
+				return type_num;					// return proper identifier type
+			}
 
 		}
 		for(count = 0 ; count < strlen(start->token);count++)
@@ -511,31 +540,37 @@ int type_check_assignment(struct assign* start,struct assign* end)
 	{
 		if(type_left == type_right)
 			return type_left;
-		else if(type_left == 3 && type_right == 2)
+		else if((type_left == 3 && type_right == 2) || (type_left == 13 && type_right == 12))
 			return type_left;
 		else
 			return -2;
 	}
 	else if(strcmp(ops->token,"[]") == 0)
 	{
-		for(i = declarations.begin(); i != declarations.end(); i++)
-		{
-			node_temp = *i;
-			if(strcmp(end1->token,node_temp->name) == 0)	
-				if(node_temp->array == 0)
-					return 0;
-
-		}	
+		if(type_left < 10)
+			return 0;
 		if(type_right != 2)
-			return -1;
+			return 0;
 		else
-			return type_left;
+		{
+			switch(type_left){
+					case 11:
+						return 1;
+					case 12:
+						return 2;
+					case 13:	
+						return 3;
+					case 14:
+						return 4;
+				}			
+		}
 	}
 	else if(compare_operators(ops->token) == 1)
 	{
 		if(type_right == type_left)
 			return 1;
-		else if((type_right == 2 && type_left == 3) || (type_right == 3 && type_left == 2))
+		else if((type_right == 2 && type_left == 3)   || (type_right == 3 && type_left == 2) || 
+			(type_right == 13 && type_left == 12) || (type_right == 12 && type_left == 13))
 			return 1;
 		else
 			return -1;
@@ -544,7 +579,8 @@ int type_check_assignment(struct assign* start,struct assign* end)
 	{
 		if(type_right == type_left)
 			return type_right;
-		else if((type_right == 2 && type_left == 3) || (type_right == 3 && type_left == 2))
+		else if((type_right == 2 && type_left == 3)   || (type_right == 3 && type_left == 2) || 
+			(type_right == 13 && type_left == 12) || (type_right == 12 && type_left == 13))
 			return 3;
 		else
 			return -1;
