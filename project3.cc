@@ -349,7 +349,7 @@ void type_checking()
 		// Calculating the return type of the assignment statement
 		type = type_check_assignment(head,temp);
 
-		switch(type){
+		switch(type%100){
 				case 14:
 					printf("Array of string\n");break;
 				case 13:
@@ -366,13 +366,14 @@ void type_checking()
 					printf("int\n");break;
 				case 1:
 					printf("bool\n");break;
-				case 0:
+				case 15:
 					printf("%s\n",ERRCODE1);break;
-				case -1:
+				case 16:
 					printf("%s\n",ERRCODE2);break;
-				case -2:
+				case 17:
 					printf("%s\n",ERRCODE3);break;
 				}
+
 		// freeing the memory linklist
 		temp = head;
 		while(temp != NULL)
@@ -456,6 +457,9 @@ int type_check_assignment(struct assign* start,struct assign* end)
 	int    type_right = 0;
 	int    type_num = 0;
 	int    temp_num = 0;
+	int    arr_size = 0;
+	int    l_array_size = 0;
+	int    r_array_size = 0;
 	temp = start->next;
 	start1 = start;
 	end2 = end;
@@ -472,17 +476,19 @@ int type_check_assignment(struct assign* start,struct assign* end)
 			{
 				type_num = type_number(node_temp->type);	
 				temp_num = type_num;
+				arr_size = node_temp->array_size;
 				if(node_temp->array == 1)
 				{
+					arr_size = arr_size*100;
 					switch (type_num){
 								case 1:
-									temp_num = 11;break;
+									temp_num = arr_size + 11;break;
 								case 2:
-									temp_num = 12;break;
+									temp_num = arr_size + 12;break;
 								case 3:
-									temp_num = 13;break;
+									temp_num = arr_size + 13;break;
 								case 4:
-									temp_num = 14;break;
+									temp_num = arr_size + 14;break;
 							}
 
 				}
@@ -496,7 +502,7 @@ int type_check_assignment(struct assign* start,struct assign* end)
 			if(start->token[count]  >= '0' && start->token[count] <= '9')
 				continue;
 			else
-				return 0;
+				return 15;
 		}
 		return 2;
 	}
@@ -527,30 +533,49 @@ int type_check_assignment(struct assign* start,struct assign* end)
 	type_right = type_check_assignment(start2,end2);
 	
 
+
+	l_array_size = type_left/100;
+        type_left = type_left%100;
+        r_array_size = type_right/100;
+        type_right = type_right%100;
 	
 	// Conquer
-	if(type_left == 0 || type_right == 0)
-		return 0;
-	if(type_left == -1 || type_right == -1)
-		return -1;
-	if(type_left == -2 || type_right == -2)
-		return -2;
+	if(type_left == 15 || type_right == 15)
+		return 15;
+	if(type_left == 16 || type_right == 16)
+		return 16;
+	if(type_left == 17 || type_right == 17)
+		return 17;
 	
+	
+
 	if(strcmp(ops->token,"=") == 0)
 	{
 		if(type_left == type_right)
+		{
+			if(l_array_size == r_array_size)
+                                return type_left;
+                        else
+                                return 17;
+		}
+		else if((type_left == 3 && type_right == 2))
 			return type_left;
-		else if((type_left == 3 && type_right == 2) || (type_left == 13 && type_right == 12))
-			return type_left;
+		else if( (type_left == 13 && type_right == 12))
+		{
+			if(l_array_size == r_array_size)
+				return 13;
+			else
+				return 17;
+		}
 		else
-			return -2;
+			return 17;
 	}
 	else if(strcmp(ops->token,"[]") == 0)
 	{
 		if(type_left < 10)
-			return 0;
+			return 15;
 		if(type_right != 2)
-			return 0;
+			return 15;
 		else
 		{
 			switch(type_left){
@@ -569,20 +594,37 @@ int type_check_assignment(struct assign* start,struct assign* end)
 	{
 		if(type_right == type_left)
 			return 1;
-		else if((type_right == 2 && type_left == 3)   || (type_right == 3 && type_left == 2) || 
-			(type_right == 13 && type_left == 12) || (type_right == 12 && type_left == 13))
+		else if((type_right == 2 && type_left == 3)   || (type_right == 3 && type_left == 2))
 			return 1;
+		else if ((type_right == 13 && type_left == 12) || (type_right == 12 && type_left == 13))
+		{
+			if(l_array_size == r_array_size)
+                                return 1;
+                        else
+                                return 16;
+		}
 		else
-			return -1;
+			return 16;
 	}
 	else if(math_operators(ops->token) == 1)
 	{
 		if(type_right == type_left)
-			return type_right;
-		else if((type_right == 2 && type_left == 3)   || (type_right == 3 && type_left == 2) || 
-			(type_right == 13 && type_left == 12) || (type_right == 12 && type_left == 13))
+		{
+			if(l_array_size == r_array_size)
+				return type_right + r_array_size*100;
+			else
+				return 16;
+		}
+		else if((type_right == 2 && type_left == 3)   || (type_right == 3 && type_left == 2))
 			return 3;
+		else if((type_right == 13 && type_left == 12) || (type_right == 12 && type_left == 13))
+		{
+			if(l_array_size == r_array_size)
+                                return r_array_size*100 + 13;
+                        else
+                                return 16;
+		}
 		else
-			return -1;
+			return 16;
 	}
 }
