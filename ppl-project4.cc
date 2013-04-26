@@ -13,7 +13,6 @@ string token;
 unordered_map<std::string,int> symbol_table;
 vector<std::string> prog;
 vector<std::string>::iterator curr_token;
-vector<vector<std::string>::iterator>  while_positions;
 int flag = 0;
 
 
@@ -52,9 +51,6 @@ int main(int argc,char** argv)
 
 	program();
 	
-//	for(it = prog.begin(); it < prog.end(); it++)
-//		cout<<*it<<endl;
-
 	return 0;
 }
 
@@ -93,7 +89,6 @@ void read_token()
 	{	
 		token = *curr_token;
 		curr_token++;
-//		cout<<token<<endl;
 	}
 }
 
@@ -102,8 +97,6 @@ void read_token()
 // Defining the function program()
 void program()
 {
-	cout<<"program \n";
-	
 	read_token();
 	if(token == "DECL")
 		declarations();
@@ -118,7 +111,6 @@ void program()
 // Defining the function declarations()
 void declarations()
 {
-	cout<<"declarations \n";
 	read_token();
 	while(token == "VAR")
 	{
@@ -134,7 +126,6 @@ void declarations()
 // Defining the function identifier()
 void identifier()
 {
-	cout<<"identifier \n";
 	read_token();
 }
 
@@ -143,7 +134,6 @@ void identifier()
 // Defining the function statements()
 void statements()
 {
-	cout<<"statements \n";
 	while(curr_token < prog.end() )
 	{
 		read_token();
@@ -160,12 +150,12 @@ void statements()
 // Defining the function statement()
 void statement()
 {
-	cout<<"statement \n";
 	if(token == "IF")
 		IF();
 	else if(token == "WHILE")
 	{
-//		WHILE();
+		//cout<<"here \n";
+		WHILE();
 	}
 	else if(token == "PRINT")
 	{
@@ -177,14 +167,12 @@ void statement()
 		if(token != "END")	
 			assign();
 	}
-	cout<<"returning token = "<<token<<endl;
 }
 
 
 // Defining the function print()
 void print()
 {
-	cout<<"print() \n";
 	read_token();
 	cout<<symbol_table.find(token)->second<<endl;
 	read_token();		// Remove ";" amd mark as end of print statement
@@ -195,7 +183,6 @@ void print()
 // Defining the function Conditional()
 bool Conditional()
 {
-	cout<<"conditional \n";
 	int num1 , num2 , comp_op;
 	
 	num1      = value();
@@ -239,7 +226,6 @@ bool Conditional()
 // Defining the function value()
 int value()
 {
-	cout<<"value \n";
 	string iden;
 	identifier();
 	if(symbol_table.count(token) > 0)
@@ -256,7 +242,6 @@ int value()
 // Defining the function compare()
 int compare()
 {
-	cout<<"compare \n";
 	read_token();
 	if(token == "<")
 		return 1;
@@ -276,7 +261,6 @@ int compare()
 // Defining the function assign()
 void assign()
 {
-	cout<<"assign \n";
 	string iden;
 	int val;
 	iden = token;
@@ -297,7 +281,6 @@ void assign()
 // Defining the function number()
 int number()
 {
-	cout<<"number \n";
 	return atoi(token.c_str());
 
 }
@@ -306,7 +289,6 @@ int number()
 // Defining the function expression()
 int expression()
 {
-	cout<<"expression \n";
 	int num1;
 	int opr;
 	int num2;
@@ -324,7 +306,6 @@ int expression()
 			case 6:
 				return num1 + num2;
 			case 7:
-	//			cout<<num1<<" "<<num2<<"\n";
 				return num1 - num2;
 			case 8:
 				return num1 * num2;
@@ -339,7 +320,6 @@ int expression()
 // Defining the function op()
 int op()
 {
-	cout<<"operator \n";
 	read_token();
 	if(token == "+")
 		return 6;
@@ -355,7 +335,6 @@ int op()
 // Defining the function IF()
 void IF()
 {
-	cout<<"IF() \n";
 	bool stat;
 	stat = Conditional();
 
@@ -369,15 +348,15 @@ void IF()
 	}
 	else
 	{
-		read_token();		
-		while(token != "END" && count == 1)
-		{
-			if(token == "IF")
+				
+		do
+		{	read_token();
+			if(token == "IF" || token == "WHILE")
 				count++;
 			if(token == "END")
 				count--;
-			read_token();
-		}
+			
+		}while(!(token == "END" && count == 0));
 	}
 	
 
@@ -387,7 +366,40 @@ void IF()
 // Defining the function WHILE()
 void WHILE()
 {
+	vector<std::string>::iterator temp,temp1;
+	temp = curr_token;
+	bool stat;
+	stat = Conditional();
+	int count = 1;
+	
 
-
-
+	if(stat == true)
+	{
+		while(stat == true)
+		{
+			read_token();
+			if(token == "DO")
+				statements();
+		
+			temp1 = curr_token;
+			curr_token = temp-1;
+			read_token(); 
+		
+			stat = Conditional();
+		}
+		curr_token = temp1 -1;
+		read_token();
+		
+	}
+	else
+	{
+		do
+		{	read_token();
+			if(token == "IF" || token == "WHILE")
+				count++;
+			if(token == "END")
+				count--;
+			
+		}while(!(token == "END" && count == 0));
+	}
 }
